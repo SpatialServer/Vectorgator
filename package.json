@@ -1,0 +1,10 @@
+{
+  "name": "Vectorgator",
+  "version": "0.0.1",
+  "scripts": {
+    "start": "node Vectorgator.js"
+  },
+  "dependencies": {
+    "pg": "2.11.1"
+  }
+}
