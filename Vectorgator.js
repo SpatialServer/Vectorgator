@@ -46,7 +46,7 @@ var run = module.exports.run = function() {
 
     for (var i = 0, len = tables.length; i < len; i++) {
       var tableName = tables[i];
-      fetchNonGeoFields(tableName);
+      fetchFields(tableName);
     }
 
   });
@@ -65,13 +65,18 @@ function fetchTableNames(cb) {
   });
 }
 
-function fetchNonGeoFields(tableName, cb) {
+function fetchFields(tableName, cb) {
   var sql = "select column_name, data_type from information_schema.columns where table_name = '" + tableName + "';";
   query(sql, function(err, res) {
     if (res && res.length > 0) {
+      var hasBBox = false;
       var fields = [];
       for (var i = 0, len = res.length; i < len; i++) {
         var field = res[i];
+
+        if (field.column_name === 'bbox') {
+          hasBBox = true;
+        }
 
         // fields of this type are geometry fields...
         if (field.data_type === 'USER-DEFINED') {
@@ -79,7 +84,7 @@ function fetchNonGeoFields(tableName, cb) {
         }
         fields.push(field.column_name);
       }
-      var sql2 = nonGeoFieldsSQL(fields, tableName);
+      var sql2 = fieldsSQL(fields, tableName, hasBBox);
 
       query(sql2, function(err, res) {
         if (res && res.length > 0) {
@@ -95,6 +100,9 @@ function fetchNonGeoFields(tableName, cb) {
 function pointsInFeatureSync(features, tableName) {
   var feature = features.pop();
   if (!feature) return;
+  if (feature.bbox) {
+    feature.bbox = JSON.parse(feature.bbox);
+  }
   var pinf = pointsInFeatureSQL(settings.job.points, tableName, feature.id);
   query(pinf, function(err, res) {
     var count = 0;
@@ -115,7 +123,10 @@ function pointsInFeatureSync(features, tableName) {
   });
 }
 
-function nonGeoFieldsSQL(fields, tableName) {
+function fieldsSQL(fields, tableName, hasBBox) {
+  if (hasBBox) {
+    return 'SELECT ' + fields.join(', ') + ', ST_AsGeoJson(bbox) as bbox FROM ' + tableName + ';';
+  }
   return 'SELECT ' + fields.join(', ') + ' FROM ' + tableName + ';';
 }
 
