@@ -106,8 +106,12 @@ function pointsInPolySync(features, polyTableName) {
   if (feature.bbox) {
     feature.bbox = JSON.parse(feature.bbox);
   }
-  var pinf = pointsInFeatureSQL(settings.job.points, polyTableName, feature.id);
-  query(pinf, function(err, res) {
+  var pinp = sqlTemplate('point_in_poly_total.sql', {
+    poly_table: polyTableName,
+    id: feature.id,
+    points_table: settings.job.points
+  });
+  query(pinp, function(err, res) {
     var count = 0;
     if (err) {
       console.error('points in feature error');
@@ -136,14 +140,6 @@ function fieldsSQL(fields, tableName, hasBBox) {
   return sqlTemplate('poly_fields.sql', {
     fields: fields.join(', '),
     table_name: tableName
-  });
-}
-
-function pointsInFeatureSQL(points, tableName, id) {
-  return sqlTemplate('point_in_poly_total.sql', {
-    poly_table: tableName,
-    id: id,
-    points_table: points
   });
 }
 
