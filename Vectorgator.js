@@ -106,28 +106,67 @@ function pointsInPolySync(features, polyTableName) {
   if (feature.bbox) {
     feature.bbox = JSON.parse(feature.bbox);
   }
-  var pinp = sqlTemplate('point_in_poly_total.sql', {
+  var tmplHash = {
     poly_table: polyTableName,
     id: feature.id,
     points_table: settings.job.points
-  });
-  query(pinp, function(err, res) {
+  };
+  var sqlPointInPolyTotal = sqlTemplate('point_in_poly_total.sql', tmplHash);
+  var sqlPointInPolyByType = sqlTemplate('point_in_poly_by_type.sql', tmplHash);
+
+  var sqlPointInPolyTotalReturned = false;
+  var sqlPointInPolyByTypeReturned = false;
+
+  query(sqlPointInPolyTotal, function(err, res) {
+    sqlPointInPolyTotalReturned = true;
     var count = 0;
     if (err) {
-      console.error('points in feature error');
+      console.error('sqlPointInPolyTotal error');
       console.error(JSON.stringify(err,null,2));
     }
     if (res && res.length > 0) {
       count = parseInt(res[0].count);
     }
-    feature.count = count;
-    var json = JSON.stringify(feature, null, 2);
-    console.log('Writing: ' + feature.id + '.json from ' + polyTableName + ' with ' + count + ' ' + settings.job.points + '.');
-    fs.writeFile('./output/' + feature.id + '.json', json, function() {
+    feature.totalCount = count;
+
+    // only write and recurse if the other queries have also returned
+    if (sqlPointInPolyByTypeReturned) {
+      var json = JSON.stringify(feature, null, 2);
+      console.log('Writing: ' + feature.id + '.json from ' + polyTableName + ' with ' + feature.totalCount + ' ' + settings.job.points + '.');
+      fs.writeFile('./output/' + feature.id + '.json', json, function() {
 //                console.log('Wrote: ' + feature.id + '.json');
-    });
-    pointsInPolySync(features, polyTableName);
+      });
+      pointsInPolySync(features, polyTableName);
+    }
+
   });
+
+  query(sqlPointInPolyByType, function(err, res) {
+    sqlPointInPolyByTypeReturned = true;
+    if (err) {
+      console.error('sqlPointInPolyByType error');
+      console.error(JSON.stringify(err,null,2));
+    }
+    feature.type = {};
+    if (res && res.length > 0) {
+      for (var i = 0, len = res.length; i < len; i++) {
+        var r = res[i];
+        feature.type[r.type] = r.count;
+      }
+    }
+
+    // only write and recurse if the other queries have also returned
+    if (sqlPointInPolyTotalReturned) {
+      var json = JSON.stringify(feature, null, 2);
+      console.log('Writing: ' + feature.id + '.json from ' + polyTableName + ' with ' + feature.totalCount + ' ' + settings.job.points + '.');
+      fs.writeFile('./output/' + feature.id + '.json', json, function() {
+//                console.log('Wrote: ' + feature.id + '.json');
+      });
+      pointsInPolySync(features, polyTableName);
+    }
+
+  });
+
 }
 
 function fieldsSQL(fields, tableName, hasBBox) {
