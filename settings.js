@@ -2,8 +2,8 @@ module.exports = {
 
   // Settings for aggregating points into polygons.
   job: {
-    tables: ['gadm0', 'gadm1', 'gadm2', 'gadm3', 'gadm4', 'gadm5'], // if not specified, we run the job on all of the tables in the database.
-    points: 'kenya_cico',
+    tables: ['gaul_2014_adm0'],
+    points: 'cicos_2013',
     pointsType: 'postgres'
   },
 
@@ -11,9 +11,8 @@ module.exports = {
   postgres: {
     server: 'localhost',
     port: '5432',
-    database: 'gadm2014',
+    database: 'fsp',
     user: 'postgres',
-    password: '',
-    escapeStr: 'nh9'
+    password: ''
   }
 };

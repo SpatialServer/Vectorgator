@@ -65,8 +65,8 @@ function fetchTableNames(cb) {
   });
 }
 
-function fetchFields(tableName, cb) {
-  var sql = "select column_name, data_type from information_schema.columns where table_name = '" + tableName + "';";
+function fetchFields(polyTableName, cb) {
+  var sql = "select column_name, data_type from information_schema.columns where table_name = '" + polyTableName + "';";
   query(sql, function(err, res) {
     if (res && res.length > 0) {
       var hasBBox = false;
@@ -84,12 +84,12 @@ function fetchFields(tableName, cb) {
         }
         fields.push(field.column_name);
       }
-      var sql2 = fieldsSQL(fields, tableName, hasBBox);
+      var sql2 = fieldsSQL(fields, polyTableName, hasBBox);
 
       query(sql2, function(err, res) {
         if (res && res.length > 0) {
-          console.log('Total of ' + res.length + ' features from ' + tableName + '.');
-          pointsInFeatureSync(res, tableName);
+          console.log('Total of ' + res.length + ' features from ' + polyTableName + '.');
+          pointsInPolySync(res, polyTableName);
         }
       });
 
@@ -97,13 +97,13 @@ function fetchFields(tableName, cb) {
   });
 }
 
-function pointsInFeatureSync(features, tableName) {
+function pointsInPolySync(features, polyTableName) {
   var feature = features.pop();
   if (!feature) return;
   if (feature.bbox) {
     feature.bbox = JSON.parse(feature.bbox);
   }
-  var pinf = pointsInFeatureSQL(settings.job.points, tableName, feature.id);
+  var pinf = pointsInFeatureSQL(settings.job.points, polyTableName, feature.id);
   query(pinf, function(err, res) {
     var count = 0;
     if (err) {
@@ -115,11 +115,11 @@ function pointsInFeatureSync(features, tableName) {
     }
     feature.count = count;
     var json = JSON.stringify(feature, null, 2);
-    console.log('Writing: ' + feature.id + '.json from ' + tableName + ' with ' + count + ' ' + settings.job.points + '.');
+    console.log('Writing: ' + feature.id + '.json from ' + polyTableName + ' with ' + count + ' ' + settings.job.points + '.');
     fs.writeFile('./output/' + feature.id + '.json', json, function() {
 //                console.log('Wrote: ' + feature.id + '.json');
     });
-    pointsInFeatureSync(features, tableName);
+    pointsInPolySync(features, polyTableName);
   });
 }
 

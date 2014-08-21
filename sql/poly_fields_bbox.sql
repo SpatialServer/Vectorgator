@@ -1,0 +1,1 @@
+SELECT '{fields}', ST_AsGeoJson(bbox) as bbox FROM '{table_name}';
