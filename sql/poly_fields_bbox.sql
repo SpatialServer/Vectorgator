@@ -1,1 +1,1 @@
-SELECT '{fields}', ST_AsGeoJson(bbox) as bbox FROM '{table_name}';
+SELECT {{fields}}, ST_AsGeoJson(bbox) as bbox FROM {{table_name}};

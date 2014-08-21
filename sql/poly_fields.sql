@@ -1,1 +1,1 @@
-SELECT '{fields}' FROM '{table_name}';
+SELECT {fields} FROM '{table_name}';

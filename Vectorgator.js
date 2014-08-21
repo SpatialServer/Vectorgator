@@ -8,32 +8,16 @@ var settings  = require('./settings.js');
 var fs        = require('fs');
 
 // PostGIS Connection String
-var conString =     "postgres://" +
+var conString = "postgres://" +
   settings.postgres.user + ":" +
   settings.postgres.password + "@" +
   settings.postgres.server + ":" +
   settings.postgres.port + "/" +
   settings.postgres.database;
 
+var sqlFiles = {};
+
 module.exports = {};
-
-var query = module.exports.query = function(queryStr, cb) {
-  pg.connect(conString, function(err, client, done) {
-    if(err) {
-      console.error('error fetching client from pool', err);
-    }
-    client.query(queryStr, function(queryerr, result) {
-      //call `done()` to release the client back to the pool
-      done();
-
-      if(queryerr) {
-        console.error('ERROR RUNNING QUERY:', queryStr, queryerr);
-      }
-
-      cb((err || queryerr), (result && result.rows ? result.rows : result));
-    });
-  });
-};
 
 var run = module.exports.run = function() {
 
@@ -53,8 +37,27 @@ var run = module.exports.run = function() {
 
 };
 
+var query = module.exports.query = function(queryStr, cb) {
+  pg.connect(conString, function(err, client, done) {
+    if(err) {
+      console.error('error fetching client from pool', err);
+    }
+    client.query(queryStr, function(queryerr, result) {
+      //call `done()` to release the client back to the pool
+      done();
+
+      if(queryerr) {
+        console.error('ERROR RUNNING QUERY:', queryStr, queryerr);
+      }
+
+      cb((err || queryerr), (result && result.rows ? result.rows : result));
+    });
+  });
+};
+
+
 function fetchTableNames(cb) {
-  var queryStr = "SELECT * FROM pg_tables;";
+  var queryStr = sqlTemplate('table_names.sql');
 
   query(queryStr, function(err, rows) {
     var tables = {};
@@ -66,7 +69,7 @@ function fetchTableNames(cb) {
 }
 
 function fetchFields(polyTableName, cb) {
-  var sql = "select column_name, data_type from information_schema.columns where table_name = '" + polyTableName + "';";
+  var sql = sqlTemplate('field_names.sql', { table_name: polyTableName });
   query(sql, function(err, res) {
     if (res && res.length > 0) {
       var hasBBox = false;
@@ -125,13 +128,40 @@ function pointsInPolySync(features, polyTableName) {
 
 function fieldsSQL(fields, tableName, hasBBox) {
   if (hasBBox) {
-    return 'SELECT ' + fields.join(', ') + ', ST_AsGeoJson(bbox) as bbox FROM ' + tableName + ';';
+    return sqlTemplate('poly_fields_bbox.sql', {
+      fields: fields.join(', '),
+      table_name: tableName
+    });
   }
-  return 'SELECT ' + fields.join(', ') + ' FROM ' + tableName + ';';
+  return sqlTemplate('poly_fields.sql', {
+    fields: fields.join(', '),
+    table_name: tableName
+  });
 }
 
 function pointsInFeatureSQL(points, tableName, id) {
-  return 'SELECT COUNT(' + tableName + '.id) FROM ' + points + ', ' + tableName + ' WHERE ST_Contains(' + tableName + '.geom, ' + points + '.geom) AND ' + tableName + '.id = ' + id + ';';
+  return sqlTemplate('point_in_poly_total.sql', {
+    poly_table: tableName,
+    id: id,
+    points_table: points
+  });
 }
+
+function sqlTemplate(sqlFile, tplHash) {
+  var sql = sqlFiles[sqlFile];
+  if (!sql) {
+    sqlFiles[sqlFile] = sql = fs.readFileSync('sql/' + sqlFile, 'utf8');
+  }
+  if (tplHash) {
+    for (var key in tplHash) {
+      var exp = '{{' + key + '}}';
+      var regex = new RegExp(exp, 'g');
+      var val = tplHash[key];
+      sql = sql.replace(regex, val);
+    }
+  }
+  return sql;
+}
+
 
 run();
