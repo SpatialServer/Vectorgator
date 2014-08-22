@@ -168,12 +168,10 @@ function pointsInPolySync(features, polyTableName) {
   var sqlPointInPolyByType = sqlTemplate('point_in_poly_by_type.sql', tmplHash);
   var sqlPointInPolyByLandUse = sqlTemplate('point_in_poly_by_land_use.sql', tmplHash);
 
-  var sqlPointInPolyTotalReturned = false;
-  var sqlPointInPolyByTypeReturned = false;
-  var sqlPointInPolyByLandUseReturned = false;
+  var pointInPolyOpCount = 3;
 
   query(sqlPointInPolyTotal, function(err, res) {
-    sqlPointInPolyTotalReturned = true;
+    --pointInPolyOpCount;
     var count = 0;
     if (err) {
       console.error('sqlPointInPolyTotal error');
@@ -185,7 +183,7 @@ function pointsInPolySync(features, polyTableName) {
     feature.total_count = count;
 
     // only write and recurse if the other queries have also returned
-    if (sqlPointInPolyByTypeReturned && sqlPointInPolyByLandUseReturned) {
+    if (pointInPolyOpCount === 0) {
       var json = JSON.stringify(feature, null, 2);
       console.log('Writing: ' + feature.id + '.json from ' + polyTableName + ' with ' + feature.total_count + ' ' + settings.job.points + '.');
       fs.writeFile('./output/' + feature.id + '.json', json, function() {
@@ -197,7 +195,7 @@ function pointsInPolySync(features, polyTableName) {
   });
 
   query(sqlPointInPolyByType, function(err, res) {
-    sqlPointInPolyByTypeReturned = true;
+    --pointInPolyOpCount;
     if (err) {
       console.error('sqlPointInPolyByType error');
       console.error(JSON.stringify(err,null,2));
@@ -211,7 +209,7 @@ function pointsInPolySync(features, polyTableName) {
     }
 
     // only write and recurse if the other queries have also returned
-    if (sqlPointInPolyTotalReturned && sqlPointInPolyByLandUseReturned) {
+    if (pointInPolyOpCount === 0) {
       var json = JSON.stringify(feature, null, 2);
       console.log('Writing: ' + feature.id + '.json from ' + polyTableName + ' with ' + feature.total_count + ' ' + settings.job.points + '.');
       fs.writeFile('./output/' + feature.id + '.json', json, function() {
@@ -223,7 +221,7 @@ function pointsInPolySync(features, polyTableName) {
   });
 
   query(sqlPointInPolyByLandUse, function(err, res) {
-    sqlPointInPolyByLandUseReturned = true;
+    --pointInPolyOpCount;
     if (err) {
       console.error('sqlPointInPolyByLandUse error');
       console.error(JSON.stringify(err,null,2));
@@ -237,7 +235,7 @@ function pointsInPolySync(features, polyTableName) {
     }
 
     // only write and recurse if the other queries have also returned
-    if (sqlPointInPolyTotalReturned && sqlPointInPolyByTypeReturned) {
+    if (pointInPolyOpCount === 0) {
       var json = JSON.stringify(feature, null, 2);
       console.log('Writing: ' + feature.id + '.json from ' + polyTableName + ' with ' + feature.total_count + ' ' + settings.job.points + '.');
       fs.writeFile('./output/' + feature.id + '.json', json, function() {
@@ -279,5 +277,20 @@ function sqlTemplate(sqlFile, tplHash) {
   return sql;
 }
 
+function pointInPolyTotal() {
+
+}
+
+function pointInPolyByType() {
+
+}
+
+function pointInPolyByLandUser() {
+
+}
+
+function pointInPolyByProvider() {
+
+}
 
 run();
