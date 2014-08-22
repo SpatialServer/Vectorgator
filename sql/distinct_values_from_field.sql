@@ -1,0 +1,1 @@
+SELECT DISTINCT({{field}}) FROM {{table_name}};

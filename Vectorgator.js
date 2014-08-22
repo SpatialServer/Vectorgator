@@ -16,25 +16,48 @@ var conString = "postgres://" +
   settings.postgres.database;
 
 var sqlFiles = {};
+var pipeSeparatedValues = {};
 
 module.exports = {};
 
 var run = module.exports.run = function() {
 
-  // First we need to know what tables are in the db
-  fetchTableNames(function(tables) {
-    // if tables specified in settings.js. Otherwise, all tables in db...
-    if (settings.job.tables && settings.job.tables.length > 0) {
-      tables = settings.job.tables;
+  /**
+   * If we have a field in our points table that is pipe separated and
+   * we want to aggregate based on the unique values, we create a master
+   * list of these values.
+   */
+  var pipeSeparatedValuesFields = settings.job.pipeSeparatedValuesFields;
+  if (pipeSeparatedValuesFields && pipeSeparatedValuesFields.length > 0) {
+    for (var v = 0, lenV = pipeSeparatedValuesFields.length; v < lenV; v++) {
+      var field = pipeSeparatedValuesFields[v];
+      findUniquePipeSeparatedValues(settings.job.points, field, function() {
+        // First we need to know what tables are in the db
+        fetchTableNames(function(tables) {
+          // if tables specified in settings.js. Otherwise, all tables in db...
+          if (settings.job.tables && settings.job.tables.length > 0) {
+            tables = settings.job.tables;
+          }
+          for (var i = 0, len = tables.length; i < len; i++) {
+            var tableName = tables[i];
+            fetchFields(tableName);
+          }
+        });
+      });
     }
-
-    for (var i = 0, len = tables.length; i < len; i++) {
-      var tableName = tables[i];
-      fetchFields(tableName);
-    }
-
-  });
-
+  } else {
+    // First we need to know what tables are in the db
+    fetchTableNames(function(tables) {
+      // if tables specified in settings.js. Otherwise, all tables in db...
+      if (settings.job.tables && settings.job.tables.length > 0) {
+        tables = settings.job.tables;
+      }
+      for (var i = 0, len = tables.length; i < len; i++) {
+        var tableName = tables[i];
+        fetchFields(tableName);
+      }
+    });
+  }
 };
 
 var query = module.exports.query = function(queryStr, cb) {
@@ -55,6 +78,36 @@ var query = module.exports.query = function(queryStr, cb) {
   });
 };
 
+function findUniquePipeSeparatedValues(table, field, cb) {
+  pipeSeparatedValues[field] = {};
+  var sql = sqlTemplate('distinct_values_from_field.sql', {
+    table_name: table,
+    field: field
+  });
+
+  query(sql, function(err, res) {
+    if (err) {
+      console.error('findUniquePipeSeparatedValues error');
+      console.error(JSON.stringify(err,null,2));
+      cb();
+      return;
+    }
+    if (res && res.length > 0) {
+      for (var i = 0, len = res.length; i < len; i++) {
+        var r = res[i];
+        var providers = r.providers;
+        if (providers === null) continue;
+        var provList = providers.split('|');
+        for (var j = 0, len2 = provList.length; j < len2; j++) {
+          var prov = provList[j];
+          pipeSeparatedValues[field][prov] = true;
+        }
+      }
+    }
+    cb();
+  });
+
+}
 
 function fetchTableNames(cb) {
   var queryStr = sqlTemplate('table_names.sql');

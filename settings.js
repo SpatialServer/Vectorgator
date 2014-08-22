@@ -4,7 +4,7 @@ module.exports = {
   job: {
     tables: ['gaul_2014_adm0'],
     points: 'cicos_2013',
-    pointsType: 'postgres'
+    pipeSeparatedValuesFields: ['providers']
   },
 
   // PostGIS Database Connection
