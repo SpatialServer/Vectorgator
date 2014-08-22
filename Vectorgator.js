@@ -168,7 +168,7 @@ function pointsInPolySync(features, polyTableName) {
   var sqlPointInPolyByType = sqlTemplate('point_in_poly_by_type.sql', tmplHash);
   var sqlPointInPolyByLandUse = sqlTemplate('point_in_poly_by_land_use.sql', tmplHash);
 
-  var opCount = 3;
+  var opCount = 4;
   function multi() {
     --opCount;
     if (opCount === 0) {
@@ -192,6 +192,11 @@ function pointsInPolySync(features, polyTableName) {
   });
 
   pointInPolyByLandUse(sqlPointInPolyByLandUse, feature, multi, function() {
+    log();
+    pointsInPolySync(features, polyTableName);
+  });
+
+  pointInPolyByProvider(polyTableName, settings.job.points, feature, multi, function() {
     log();
     pointsInPolySync(features, polyTableName);
   });
@@ -240,15 +245,7 @@ function pointInPolyTotal(sql, feature, multi, cb) {
     }
     feature.total_count = count;
 
-    // only write and recurse if the other queries have also returned
-    if (ready) {
-      var json = JSON.stringify(feature, null, 2);
-      fs.writeFile('./output/' + feature.id + '.json', json, function() {
-//                console.log('Wrote: ' + feature.id + '.json');
-      });
-      cb();
-    }
-
+    write(ready, feature, cb);
   });
 }
 
@@ -267,15 +264,7 @@ function pointInPolyByType(sql, feature, multi, cb) {
       }
     }
 
-    // only write and recurse if the other queries have also returned
-    if (ready) {
-      var json = JSON.stringify(feature, null, 2);
-      fs.writeFile('./output/' + feature.id + '.json', json, function() {
-//                console.log('Wrote: ' + feature.id + '.json');
-      });
-      cb();
-    }
-
+    write(ready, feature, cb);
   });
 }
 
@@ -294,20 +283,56 @@ function pointInPolyByLandUse(sql, feature, multi, cb) {
       }
     }
 
-    // only write and recurse if the other queries have also returned
-    if (ready) {
-      var json = JSON.stringify(feature, null, 2);
-      fs.writeFile('./output/' + feature.id + '.json', json, function() {
-//                console.log('Wrote: ' + feature.id + '.json');
-      });
-      cb();
-    }
-
+    write(ready, feature, cb);
   });
 }
 
-function pointInPolyByProvider() {
+function pointInPolyByProvider(polyTableName, pointsTableName, feature, multi, cb) {
+  var providers = {};
+  for (var p in pipeSeparatedValues.providers) {
+    providers[p] = pipeSeparatedValues.providers[p];
+  }
+  if (!feature.providers) feature.providers = {};
+  var keys = Object.keys(providers);
+  if (keys.length > 0) {
+    var provider = keys[0];
+    var tmplHash = {
+      poly_table: polyTableName,
+      id: feature.id,
+      points_table: pointsTableName,
+      provider: provider
+    };
+    var sql = sqlTemplate('point_in_poly_by_provider.sql', tmplHash);
+    query(sql, function(err, res) {
+      if (err) {
+        console.error('pointInPolyByProvider error');
+        console.error(JSON.stringify(err,null,2));
+      }
+      if (res && res.length > 0) {
+        for (var j = 0, len2 = res.length; j < len2; j++) {
+          var r = res[j];
+          var count = parseInt(r.count);
+          if (count > 0) {
+            feature.providers[r.provider] = count;
+          }
+          pointInPolyByProvider(polyTableName, pointsTableName, feature, multi, cb);
+        }
+      }
+    });
+    delete providers[provider];
+  } else {
+    var ready = multi();
+    write(ready, feature, cb);
+  }
+}
 
+function write(ready, feature, cb) {
+  // only write and recurse if the other queries have also returned
+  if (ready) {
+    var json = JSON.stringify(feature, null, 2);
+    fs.writeFileSync('./output/' + feature.id + '.json', json);
+    cb();
+  }
 }
 
 run();
