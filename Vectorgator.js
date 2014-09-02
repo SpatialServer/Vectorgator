@@ -168,7 +168,7 @@ function pointsInPolySync(features, polyTableName) {
   var sqlPointInPolyByType = sqlTemplate('point_in_poly_by_type.sql', tmplHash);
   var sqlPointInPolyByLandUse = sqlTemplate('point_in_poly_by_land_use.sql', tmplHash);
 
-  var opCount = 4;
+  var opCount = 3;
   function multi() {
     --opCount;
     if (opCount === 0) {
@@ -196,10 +196,10 @@ function pointsInPolySync(features, polyTableName) {
     pointsInPolySync(features, polyTableName);
   });
 
-  pointInPolyByProvider(polyTableName, settings.job.points, feature, multi, function() {
-    log();
-    pointsInPolySync(features, polyTableName);
-  });
+//  pointInPolyByProvider(polyTableName, settings.job.points, feature, multi, function() {
+//    log();
+//    pointsInPolySync(features, polyTableName);
+//  });
 
 }
 
