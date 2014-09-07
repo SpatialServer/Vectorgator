@@ -104,6 +104,8 @@ function findUniquePipeSeparatedValues(table, field, cb) {
         }
       }
     }
+    var json = JSON.stringify(pipeSeparatedValues, null, 2);
+    fs.writeFileSync('./pipeSeparatedValues.json', json);
     cb();
   });
 
@@ -288,10 +290,7 @@ function pointInPolyByLandUse(sql, feature, multi, cb) {
 }
 
 function pointInPolyByProvider(polyTableName, pointsTableName, feature, multi, cb) {
-  var providers = {};
-  for (var p in pipeSeparatedValues.providers) {
-    providers[p] = pipeSeparatedValues.providers[p];
-  }
+  var providers = pipeSeparatedValues.providers;
   if (!feature.providers) feature.providers = {};
   var keys = Object.keys(providers);
   if (keys.length > 0) {
