@@ -177,7 +177,9 @@ function pointsInPolySync(features, polyTableName) {
   }
 
   function log() {
-    console.log('Writing: ' + feature.id + '.json from ' + polyTableName + ' with ' + feature.total_count + ' ' + settings.job.points + '.');
+    if (feature.total_count > 0) {
+      console.log('Writing: ' + feature.id + '.json from ' + polyTableName + ' with ' + feature.total_count + ' ' + settings.job.points + '.');
+    }
   }
 
   var sqlPointInPolyTotal = sqlTemplate('point_in_poly_total.sql', {
@@ -276,8 +278,10 @@ function pointInPoly(category, sql, feature, multi, cb) {
 function write(ready, feature, cb) {
   // only write and recurse if the other queries have also returned
   if (ready) {
-    var json = JSON.stringify(feature, null, 2);
+    var json = JSON.stringify(feature);
     fs.writeFileSync('./output/' + feature.id + '.json', json);
+    var jsonPretty = JSON.stringify(feature, null, 2);
+    fs.writeFileSync('./output/' + feature.id + 'pretty.json', jsonPretty);
     cb();
   }
 }

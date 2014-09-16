@@ -5,14 +5,10 @@ module.exports = {
     tables: [
       'gaul_2014_adm0',
       'gaul_2014_adm1',
-      'gaul_2014_adm2',
-      'nigeria_regions_adm1',
-      'nigeria_regions_adm2',
-      'tanzania_regions_adm1',
-      'tanzania_regions_adm2'
+      'gaul_2014_adm2'
     ],
-    points: 'cicos_2013',
-    categories: ['type', 'land_use']
+    points: 'cicos_2014',
+    categories: ['name', 'type', 'land_use', 'assoc_business', 'assoc_bank', 'status']
   },
 
   // PostGIS Database Connection
