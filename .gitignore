@@ -1,4 +1,6 @@
 output/
+categories-pretty.json
+categories.json
 
 ############## generic files to ignore #######
 *~

@@ -22,6 +22,43 @@ module.exports = {};
 
 var run = module.exports.run = function() {
 
+  // ========= FINDING DISTINCT CATEGORIES =========
+  // creating a json file with a list of all of the categories for each field we group by
+  if (settings.job.categories && settings.job.categories.length > 0) {
+    // object that will be filled with all of the values for each category we group by
+    var categories = {};
+    var arr = settings.job.categories;
+    for (var i = 0, len = arr.length; i < len; ++i) {
+      var category = arr[i];
+      categories[category] = [];
+      var sql = sqlTemplate('distinct_values_from_field.sql', {
+        table_name: settings.job.points,
+        field: category
+      });
+
+      query(sql, function(err, res) {
+        if (err) {
+          console.error('findDistinctCategories error');
+          console.error(JSON.stringify(err,null,2));
+        }
+        if (res && res.length > 0) {
+          for (var i = 0, len = res.length; i < len; i++) {
+            var r = res[i];
+            var category = Object.keys(r)[0];
+            if (r[category] === null) {
+              continue;
+            }
+            categories[category].push(r[category]);
+          }
+        }
+        var json = JSON.stringify(categories);
+        var jsonPretty = JSON.stringify(categories, null, 2);
+        fs.writeFileSync('./categories.json', json);
+        fs.writeFileSync('./categories-pretty.json', jsonPretty);
+      });
+    }
+  }
+
   /**
    * If we have a field in our points table that is pipe separated and
    * we want to aggregate based on the unique values, we create a master
