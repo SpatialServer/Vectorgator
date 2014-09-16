@@ -12,7 +12,7 @@ module.exports = {
       'tanzania_regions_adm2'
     ],
     points: 'cicos_2013',
-    pipeSeparatedValuesFields: ['providers']
+    categories: ['type', 'land_use']
   },
 
   // PostGIS Database Connection

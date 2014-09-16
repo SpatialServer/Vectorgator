@@ -161,16 +161,13 @@ function pointsInPolySync(features, polyTableName) {
   if (feature.bbox) {
     feature.bbox = JSON.parse(feature.bbox);
   }
-  var tmplHash = {
-    poly_table: polyTableName,
-    id: feature.id,
-    points_table: settings.job.points
-  };
-  var sqlPointInPolyTotal = sqlTemplate('point_in_poly_total.sql', tmplHash);
-  var sqlPointInPolyByType = sqlTemplate('point_in_poly_by_type.sql', tmplHash);
-  var sqlPointInPolyByLandUse = sqlTemplate('point_in_poly_by_land_use.sql', tmplHash);
 
-  var opCount = 3;
+  // 1 is because we are always doing a total points aggregation via pointInPolyTotal
+  var opCount = 1;
+  if (settings.job.categories) {
+    opCount += settings.job.categories.length;
+  }
+
   function multi() {
     --opCount;
     if (opCount === 0) {
@@ -183,25 +180,31 @@ function pointsInPolySync(features, polyTableName) {
     console.log('Writing: ' + feature.id + '.json from ' + polyTableName + ' with ' + feature.total_count + ' ' + settings.job.points + '.');
   }
 
+  var sqlPointInPolyTotal = sqlTemplate('point_in_poly_total.sql', {
+    poly_table: polyTableName,
+    id: feature.id,
+    points_table: settings.job.points
+  });
   pointInPolyTotal(sqlPointInPolyTotal, feature, multi, function() {
     log();
     pointsInPolySync(features, polyTableName);
   });
 
-  pointInPolyByType(sqlPointInPolyByType, feature, multi, function() {
-    log();
-    pointsInPolySync(features, polyTableName);
-  });
-
-  pointInPolyByLandUse(sqlPointInPolyByLandUse, feature, multi, function() {
-    log();
-    pointsInPolySync(features, polyTableName);
-  });
-
-//  pointInPolyByProvider(polyTableName, settings.job.points, feature, multi, function() {
-//    log();
-//    pointsInPolySync(features, polyTableName);
-//  });
+  if (settings.job.categories) {
+    for (var i = 0, len = settings.job.categories.length; i < len; i++) {
+      var category = settings.job.categories[i];
+      var sql = sqlTemplate('point_in_poly.sql', {
+        poly_table: polyTableName,
+        id: feature.id,
+        points_table: settings.job.points,
+        category: category
+      });
+      pointInPoly(category, sql, feature, multi, function() {
+        log();
+        pointsInPolySync(features, polyTableName);
+      });
+    }
+  }
 
 }
 
@@ -251,78 +254,23 @@ function pointInPolyTotal(sql, feature, multi, cb) {
   });
 }
 
-function pointInPolyByType(sql, feature, multi, cb) {
+function pointInPoly(category, sql, feature, multi, cb) {
   query(sql, function(err, res) {
     var ready = multi();
     if (err) {
-      console.error('pointInPolyByType error');
+      console.error('sqlPointInPoly error');
       console.error(JSON.stringify(err,null,2));
     }
-    feature.type = {};
-    if (res && res.length > 0) {
-      for (var i = 0, len = res.length; i < len; i++) {
-        var r = res[i];
-        feature.type[r.type] = parseInt(r.count);
-      }
-    }
-
-    write(ready, feature, cb);
-  });
-}
-
-function pointInPolyByLandUse(sql, feature, multi, cb) {
-  query(sql, function(err, res) {
-    var ready = multi();
-    if (err) {
-      console.error('sqlPointInPolyByLandUse error');
-      console.error(JSON.stringify(err,null,2));
-    }
-    feature.land_use = {};
+    feature[category] = {};
     if (res && res.length > 0) {
       for (var j = 0, len2 = res.length; j < len2; j++) {
         var r = res[j];
-        feature.land_use[r.land_use] = parseInt(r.count);
+        feature[category][r[category]] = parseInt(r.count);
       }
     }
 
     write(ready, feature, cb);
   });
-}
-
-function pointInPolyByProvider(polyTableName, pointsTableName, feature, multi, cb) {
-  var providers = pipeSeparatedValues.providers;
-  if (!feature.providers) feature.providers = {};
-  var keys = Object.keys(providers);
-  if (keys.length > 0) {
-    var provider = keys[0];
-    var tmplHash = {
-      poly_table: polyTableName,
-      id: feature.id,
-      points_table: pointsTableName,
-      provider: provider
-    };
-    var sql = sqlTemplate('point_in_poly_by_provider.sql', tmplHash);
-    query(sql, function(err, res) {
-      if (err) {
-        console.error('pointInPolyByProvider error');
-        console.error(JSON.stringify(err,null,2));
-      }
-      if (res && res.length > 0) {
-        for (var j = 0, len2 = res.length; j < len2; j++) {
-          var r = res[j];
-          var count = parseInt(r.count);
-          if (count > 0) {
-            feature.providers[r.provider] = count;
-          }
-          pointInPolyByProvider(polyTableName, pointsTableName, feature, multi, cb);
-        }
-      }
-    });
-    delete providers[provider];
-  } else {
-    var ready = multi();
-    write(ready, feature, cb);
-  }
 }
 
 function write(ready, feature, cb) {
