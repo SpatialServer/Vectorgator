@@ -53,6 +53,7 @@ var run = module.exports.run = function() {
         }
         var json = JSON.stringify(categories);
         var jsonPretty = JSON.stringify(categories, null, 2);
+        console.log('Writing categories to ./categories.json');
         fs.writeFileSync('./categories.json', json);
         fs.writeFileSync('./categories-pretty.json', jsonPretty);
       });
