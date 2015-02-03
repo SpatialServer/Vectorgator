@@ -220,11 +220,22 @@ function pointsInPolySync(features, polyTableName) {
     }
   }
 
+  var country = settings.job.country;
+  if (country !== null && typeof country === 'string') {
+    var sqlPointInPolyTotal = sqlTemplate('point_in_poly_total_country.sql', {
+      poly_table: polyTableName,
+      id: feature.id,
+      points_table: settings.job.points,
+      country: country
+    });
+  } else {
   var sqlPointInPolyTotal = sqlTemplate('point_in_poly_total.sql', {
     poly_table: polyTableName,
     id: feature.id,
     points_table: settings.job.points
   });
+  }
+
   pointInPolyTotal(sqlPointInPolyTotal, feature, multi, function() {
     log();
     pointsInPolySync(features, polyTableName);
@@ -233,12 +244,24 @@ function pointsInPolySync(features, polyTableName) {
   if (settings.job.categories) {
     for (var i = 0, len = settings.job.categories.length; i < len; i++) {
       var category = settings.job.categories[i];
-      var sql = sqlTemplate('point_in_poly.sql', {
+
+      if (country !== null && typeof country === 'string') {
+        var sql = sqlTemplate('point_in_poly_country.sql', {
+          poly_table: polyTableName,
+          id: feature.id,
+          points_table: settings.job.points,
+          category: category,
+          country: country
+        });
+      } else {
+        var sql = sqlTemplate('point_in_poly.sql', {
         poly_table: polyTableName,
         id: feature.id,
         points_table: settings.job.points,
         category: category
-      });
+        });
+      }
+
       pointInPoly(category, sql, feature, multi, function() {
         log();
         pointsInPolySync(features, polyTableName);
@@ -250,15 +273,25 @@ function pointsInPolySync(features, polyTableName) {
 
 function fieldsSQL(fields, tableName, hasBBox) {
   if (hasBBox) {
-    return sqlTemplate('poly_fields_bbox.sql', {
+    var country = settings.job.country;
+
+    if (country !== null && typeof country === 'string') {
+      return sqlTemplate('poly_fields_bbox_country.sql', {
+        fields: fields.join(', '),
+        table_name: tableName,
+        country: country
+      });
+    } else {
+      return sqlTemplate('poly_fields_bbox.sql', {
+        fields: fields.join(', '),
+        table_name: tableName
+      });
+    }
+    return sqlTemplate('poly_fields.sql', {
       fields: fields.join(', '),
       table_name: tableName
     });
   }
-  return sqlTemplate('poly_fields.sql', {
-    fields: fields.join(', '),
-    table_name: tableName
-  });
 }
 
 function sqlTemplate(sqlFile, tplHash) {

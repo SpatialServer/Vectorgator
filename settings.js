@@ -7,9 +7,13 @@ module.exports = {
       'gaul_2014_adm1',
       'gaul_2014_adm2'
     ],
+    country: 'Kenya',
 
-    points: 'cicos_2014',
-    categories: ['name', 'type', 'land_use', 'assoc_business', 'assoc_bank', 'status']
+    //points: 'cicos_2014',
+    //categories: ['name', 'type', 'land_use', 'assoc_business', 'assoc_bank', 'status']
+
+    points: 'cicos_2013',
+    categories: ['type','land_use','providers']
 
 //    points: 'library_2014',
 //    categories: ['type', 'land_use', 'newspapers', 'fiction', 'non_fiction', 'encyclopedias', 'magazines', 'internet', 'computers','computer_fee']
